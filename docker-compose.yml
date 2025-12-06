@@ -45,19 +45,18 @@ services:
     image: devlikeapro/waha
     container_name: waha
     restart: unless-stopped
-    environment:
-      - WAHA_API_HOSTNAME=0.0.0.0
-      - WAHA_API_PORT=3000
-      - WHATSAPP_HOOK_URL=https://${N8N_HOST}/webhook/waha
-      - WHATSAPP_HOOK_EVENTS=message,session.status
+    env_file:
+      - .waha.env
     volumes:
-      - waha_data:/app/.waha
+      - waha_sessions:/app/.sessions
+      - waha_media:/app/.media
     networks:
       - app_network
 
 volumes:
   n8n_data:
-  waha_data:
+  waha_sessions:
+  waha_media:
 
 networks:
   app_network:
