@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on:
+      - n8n
+      - waha
+    networks:
+      - app_network
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://${N8N_HOST}/
+      - GENERIC_TIMEZONE=${TIMEZONE}
+      - TZ=${TIMEZONE}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - app_network
+
+  waha:
+    image: devlikeapro/waha
+    container_name: waha
+    restart: unless-stopped
+    environment:
+      - WAHA_API_HOSTNAME=0.0.0.0
+      - WAHA_API_PORT=3000
+      - WHATSAPP_HOOK_URL=https://${N8N_HOST}/webhook/waha
+      - WHATSAPP_HOOK_EVENTS=message,session.status
+    volumes:
+      - waha_data:/app/.waha
+    networks:
+      - app_network
+
+volumes:
+  n8n_data:
+  waha_data:
+
+networks:
+  app_network:
+    driver: bridge
